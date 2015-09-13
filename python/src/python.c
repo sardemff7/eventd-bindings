@@ -52,7 +52,7 @@ struct _EventdPluginContext {
 };
 
 static PyObject *
-_eventd_bindings_python_register_script(PyObject *module, PyObject *args)
+_eventd_bindings_python_register_plugin(PyObject *module, PyObject *args)
 {
     PyObject *context = PyObject_GetAttrString(module, "context");
     EventdPluginContext *self = PyCapsule_GetPointer(context, "EventdPlugin.context");
@@ -131,8 +131,8 @@ _eventd_bindings_python_init(EventdPluginCoreContext *core, EventdPluginCoreInte
     PyObject_SetAttrString(self->py.mEventdPlugin, "context", context);
 
     PyMethodDef func_def = {
-        "register_script",
-        _eventd_bindings_python_register_script,
+        "register_plugin",
+        _eventd_bindings_python_register_plugin,
         METH_VARARGS,
         "Register a script in the " PACKAGE_NAME " python plugin."
     };

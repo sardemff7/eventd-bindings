@@ -77,7 +77,7 @@ _eventd_bindings_ruby_get_context(void)
 }
 
 static VALUE
-_eventd_bindings_ruby_register_script(VALUE ruby_self, VALUE klass)
+_eventd_bindings_ruby_register_plugin(VALUE ruby_self, VALUE klass)
 {
     EventdPluginContext *self = _eventd_bindings_ruby_get_context();
 
@@ -199,7 +199,7 @@ _eventd_bindings_ruby_init(EventdPluginCoreContext *core, EventdPluginCoreInterf
         return NULL;
     }
 
-    rb_define_module_function(self->rb.mEventdPlugin, "register_script", _eventd_bindings_ruby_register_script, 1);
+    rb_define_module_function(self->rb.mEventdPlugin, "register_plugin", _eventd_bindings_ruby_register_plugin, 1);
 
 
     const gchar *env_dir;

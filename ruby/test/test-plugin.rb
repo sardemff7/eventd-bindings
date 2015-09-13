@@ -34,4 +34,4 @@ class EventdBindingsRubyTestScript
     end
 end
 
-EventdPlugin.register_script(EventdBindingsRubyTestScript.new)
+EventdPlugin.register_plugin(EventdBindingsRubyTestScript.new)
