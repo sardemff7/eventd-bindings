@@ -189,6 +189,20 @@ _eventd_bindings_lua_get_option_group(EventdPluginContext *self)
     return NULL;
 }
 
+static gint
+_eventd_bindings_lua_push_object_with_class(EventdPluginContext *self, gpointer object, const gchar *module, const gchar *klass)
+{
+    lua_getglobal(self->lua, module);
+    lua_getfield(self->lua, -1, klass);
+    lua_remove(self->lua, -2);
+    //lua_getmetatable(self->lua, -1);
+    //lua_insert(self->lua, lua_gettop(self->lua) - 1);
+    lua_pushlightuserdata(self->lua, object);
+    lua_call(self->lua, 1, 1);
+    //lua_setmetatable(self->lua, -1);
+    return lua_gettop(self->lua);
+}
+
 #define foreach_script(name, argc, code) \
     lua_getglobal(self->lua, "EventdPlugin"); \
     lua_getfield(self->lua, -1, "scripts"); \
@@ -230,13 +244,10 @@ _eventd_bindings_lua_control_command(EventdPluginContext *self, guint64 argc, co
 static void
 _eventd_bindings_lua_global_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
-    gint glib;
-    lua_getglobal(self->lua, "GLib");
-    glib = lua_gettop(self->lua);
+    gint key_file_;
+    key_file_ = _eventd_bindings_lua_push_object_with_class(self, key_file, "GLib", "KeyFile");
     foreach_script("global_parse", 2,
-        lua_pushlightuserdata(self->lua, key_file);
-        lua_getfield(self->lua, glib, "HashTable");
-        lua_setmetatable(self->lua, -2);
+        lua_pushvalue(self->lua, key_file_);
     );
     lua_pop(self->lua, 1);
 }
@@ -244,15 +255,13 @@ _eventd_bindings_lua_global_parse(EventdPluginContext *self, GKeyFile *key_file)
 static void
 _eventd_bindings_lua_event_parse(EventdPluginContext *self, const gchar *config_id, GKeyFile *key_file)
 {
-    gint glib;
-    lua_getglobal(self->lua, "GLib");
-    glib = lua_gettop(self->lua);
+    gint key_file_;
+    key_file_ = _eventd_bindings_lua_push_object_with_class(self, key_file, "GLib", "KeyFile");
     foreach_script("event_parse", 3,
         lua_pushstring(self->lua, config_id);
-        lua_pushlightuserdata(self->lua, key_file);
-        lua_getfield(self->lua, glib, "HashTable");
-        lua_setmetatable(self->lua, -2);
+        lua_pushvalue(self->lua, key_file_);
     );
+    lua_pop(self->lua, 1);
 }
 
 static void
@@ -264,15 +273,13 @@ _eventd_bindings_lua_config_reset(EventdPluginContext *self)
 static void
 _eventd_bindings_lua_event_action(EventdPluginContext *self, const gchar *config_id, EventdEvent *event)
 {
-    gint eventd_event;
-    lua_getglobal(self->lua, "EventdEvent");
-    eventd_event = lua_gettop(self->lua);
+    gint event_;
+    event_ = _eventd_bindings_lua_push_object_with_class(self, event, "EventdEvent", "Event");
     foreach_script("event_action", 3,
         lua_pushstring(self->lua, config_id);
-        lua_pushlightuserdata(self->lua, event);
-        lua_getfield(self->lua, eventd_event, "Event");
-        lua_setmetatable(self->lua, -2);
+        lua_pushvalue(self->lua, event_);
     );
+    lua_pop(self->lua, 1);
 }
 
 EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "eventd-bindings-lua";

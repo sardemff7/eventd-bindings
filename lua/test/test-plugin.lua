@@ -14,7 +14,9 @@ function EventdBindingsLuaTestScript:stop()
     print("LUA STOP");
 end
 
-function EventdBindingsLuaTestScript:global_parse( key_file)
+function EventdBindingsLuaTestScript:global_parse(key_file)
+    print("LUA GLOBAL PARSE")
+    print(key_file:get_start_group())
     if ( key_file:has_group("Server") ) then
         print("LUA HAS GROUP");
     end
