@@ -196,11 +196,14 @@ _eventd_bindings_lua_get_option_group(EventdPluginContext *self)
     GList *script_; \
     for ( script_ = self->scripts ; script_ != NULL ; script_ = g_list_next(script_) ) \
     { \
-        gint i; \
         lua_getfield(self->lua, -1, script_->data); \
-        i = lua_gettop(self->lua); \
         lua_getfield(self->lua, -1, name); \
-        lua_insert(self->lua, i); \
+        if ( ! lua_isfunction(self->lua, -1) ) \
+        { \
+            lua_pop(self->lua, 2); \
+            continue; \
+        } \
+        lua_insert(self->lua, lua_gettop(self->lua) - 1); \
         code \
         lua_call(self->lua, argc, 0); \
     } \
