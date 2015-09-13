@@ -31,6 +31,7 @@ AM_LDFLAGS += \
 
 include helpers/helpers.mk
 include ruby/ruby.mk
+include lua/lua.mk
 include python/python.mk
 
 -include local-rules.mk

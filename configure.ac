@@ -71,6 +71,13 @@ if test x${enable_ruby} = xyes; then
 fi
 AM_CONDITIONAL([ENABLE_RUBY], [test x${enable_ruby} = xyes])
 
+AC_ARG_ENABLE([lua], AS_HELP_STRING([--disable-lua], [Disable Lua plugin]), [], [enable_lua=yes])
+if test x${enable_lua} = xyes; then
+    PKG_CHECK_MODULES([LUA], [lua gmodule-2.0])
+    AC_DEFINE([LUA_NEEDS_GLOBAL_LOADING], [1], [Whether Lua needs loading])
+fi
+AM_CONDITIONAL([ENABLE_LUA], [test x${enable_lua} = xyes])
+
 AC_ARG_ENABLE([python], AS_HELP_STRING([--disable-python], [Disable Python 3 plugin]), [], [enable_python=yes])
 if test x${enable_python} = xyes; then
     PKG_CHECK_MODULES([PYTHON], [pygobject-3.0 python3 >= 3.3 gmodule-2.0])
@@ -101,6 +108,7 @@ AC_MSG_RESULT([
 
     Languages tests:
         Ruby:   ${enable_ruby}
+        Lua:    ${enable_lua}
         Python: ${enable_python}
 
 dnl     Tests: ${enable_tests}
