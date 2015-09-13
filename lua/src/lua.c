@@ -265,7 +265,7 @@ _eventd_bindings_lua_event_action(EventdPluginContext *self, const gchar *config
     lua_getglobal(self->lua, "EventdEvent");
     eventd_event = lua_gettop(self->lua);
     foreach_script("event_action", 3,
-        lua_pushseventd_eventtring(self->lua, config_id);
+        lua_pushstring(self->lua, config_id);
         lua_pushlightuserdata(self->lua, event);
         lua_getfield(self->lua, eventd_event, "Event");
         lua_setmetatable(self->lua, -2);
