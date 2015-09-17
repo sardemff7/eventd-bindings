@@ -2,7 +2,7 @@
 
 local lgi = require 'lgi'
 local GLib = lgi.GLib
-local Eventd = lgi.EventdEvent
+local Eventd = lgi.Eventd
 local Eventc = lgi.Eventc
 
 local host = 'localhost'

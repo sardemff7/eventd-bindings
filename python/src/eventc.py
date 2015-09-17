@@ -4,7 +4,7 @@ import argparse
 
 from gi.repository import GLib
 from gi.repository import Eventc
-from gi.repository import EventdEvent as Eventd
+from gi.repository import Eventd
 
 parser = argparse.ArgumentParser(description='Basic Python CLI client for eventd')
 

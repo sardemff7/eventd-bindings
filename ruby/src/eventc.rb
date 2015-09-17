@@ -2,7 +2,7 @@
 
 require 'gir_ffi'
 
-GirFFI.setup :EventdEvent
+GirFFI.setup :Eventd
 GirFFI.setup :Eventc
 
 host = 'localhost'
@@ -42,7 +42,7 @@ data_name_contents_error unless ( last_data.nil? )
 $eventc = Eventc::Connection.new(host)
 $eventc.set_passive(!$wait)
 
-$event = EventdEvent::Event.new(category, name)
+$event = Eventd::Event.new(category, name)
 data.each_pair { |n,v| $event.add_data(n, v) }
 
 $loop = GLib::MainLoop.new(nil, false)

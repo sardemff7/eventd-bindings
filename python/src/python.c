@@ -44,7 +44,7 @@
 struct _EventdPluginContext {
     struct {
         PyObject *mGLib;
-        PyObject *mEventdEvent;
+        PyObject *mEventd;
         PyObject *mEventdPlugin;
     } py;
     const gchar *current_script;
@@ -120,10 +120,10 @@ _eventd_bindings_python_init(EventdPluginCoreContext *core, EventdPluginCoreInte
     pygobject_init(-1, -1, -1);
 
     self->py.mGLib = PyImport_ImportModule("gi.repository.GLib");
-    self->py.mEventdEvent = PyImport_ImportModule("gi.repository.EventdEvent");
+    self->py.mEventd = PyImport_ImportModule("gi.repository.Eventd");
     self->py.mEventdPlugin = PyImport_ImportModule("gi.repository.EventdPlugin");
     PyObject_SetAttrString(__main__, "GLib", self->py.mGLib);
-    PyObject_SetAttrString(__main__, "EventdEvent", self->py.mEventdEvent);
+    PyObject_SetAttrString(__main__, "Eventd", self->py.mEventd);
     PyObject_SetAttrString(__main__, "EventdPlugin", self->py.mEventdPlugin);
 
     PyObject *context;
@@ -162,7 +162,7 @@ static void
 _eventd_bindings_python_uninit(EventdPluginContext *self)
 {
     Py_XDECREF(self->py.mEventdPlugin);
-    Py_XDECREF(self->py.mEventdEvent);
+    Py_XDECREF(self->py.mEventd);
     Py_XDECREF(self->py.mGLib);
 
     Py_Finalize();

@@ -41,7 +41,7 @@ struct _EventdPluginContext {
         VALUE mFFI;
         VALUE mGirFFI;
         VALUE mGLib;
-        VALUE mEventdEvent;
+        VALUE mEventd;
         VALUE mEventdPlugin;
 
         VALUE cPointer;
@@ -130,12 +130,12 @@ _eventd_bindings_ruby_load_stuff(VALUE dummy)
     self->rb.mFFI = rb_const_get_at(rb_cObject, rb_intern("FFI"));
     self->rb.mGirFFI = rb_const_get_at(rb_cObject, rb_intern("GirFFI"));
     self->rb.mGLib = rb_const_get_at(rb_cObject, rb_intern("GLib"));
-    self->rb.mEventdEvent = rb_funcall(self->rb.mGirFFI, setup, 1, rb_str_new_cstr("EventdEvent"));
+    self->rb.mEventd = rb_funcall(self->rb.mGirFFI, setup, 1, rb_str_new_cstr("Eventd"));
     self->rb.mEventdPlugin = rb_funcall(self->rb.mGirFFI, setup, 1, rb_str_new_cstr("EventdPlugin"));
 
     self->rb.cPointer = rb_const_get_at(self->rb.mFFI, rb_intern("Pointer"));
     self->rb.cKeyFile = rb_const_get_at(self->rb.mGLib, rb_intern("KeyFile"));
-    self->rb.cEvent = rb_const_get_at(self->rb.mEventdEvent, rb_intern("Event"));
+    self->rb.cEvent = rb_const_get_at(self->rb.mEventd, rb_intern("Event"));
 
 #define set_id(n) self->rb.id.n = rb_intern(#n)
     set_id(new);

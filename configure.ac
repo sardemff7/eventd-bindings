@@ -55,7 +55,7 @@ AC_SUBST([bindingsdir])
 PKG_NOARCH_INSTALLDIR
 
 
-PKG_CHECK_MODULES([EVENTD], [libeventd-plugin libeventd-event gobject-2.0 glib-2.0])
+PKG_CHECK_MODULES([EVENTD], [libeventd libeventd-plugin gobject-2.0 glib-2.0])
 
 AC_ARG_WITH([eventdpluginsdir], AS_HELP_STRING([--with-eventdpluginsdir=DIR], [Directory for eventd plugins]), [], [with_eventdpluginsdir=yes])
 case "${with_eventdpluginsdir}" in

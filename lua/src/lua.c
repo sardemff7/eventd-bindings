@@ -142,7 +142,7 @@ _eventd_bindings_lua_init(EventdPluginCoreContext *core, EventdPluginCoreInterfa
 
     _eventd_bindings_lua_require(self, "lgi");
     _eventd_bindings_lua_lgi_require(self, "GLib", FALSE);
-    _eventd_bindings_lua_lgi_require(self, "EventdEvent", FALSE);
+    _eventd_bindings_lua_lgi_require(self, "Eventd", FALSE);
     _eventd_bindings_lua_lgi_require(self, "EventdPlugin", TRUE);
     lua_remove(self->lua, -2);
 
@@ -274,7 +274,7 @@ static void
 _eventd_bindings_lua_event_action(EventdPluginContext *self, const gchar *config_id, EventdEvent *event)
 {
     gint event_;
-    event_ = _eventd_bindings_lua_push_object_with_class(self, event, "EventdEvent", "Event");
+    event_ = _eventd_bindings_lua_push_object_with_class(self, event, "Eventd", "Event");
     foreach_script("event_action", 3,
         lua_pushstring(self->lua, config_id);
         lua_pushvalue(self->lua, event_);
