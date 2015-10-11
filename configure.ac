@@ -54,8 +54,8 @@ AC_SUBST([bindingsdir])
 # pkg-config files
 PKG_NOARCH_INSTALLDIR
 
-
-PKG_CHECK_MODULES([EVENTD], [libeventd libeventd-plugin gobject-2.0 glib-2.0])
+libeventd_min_version="0.7"
+PKG_CHECK_MODULES([EVENTD], [libeventd >= ${libeventd_min_version} libeventd-plugin >= ${libeventd_min_version} gobject-2.0 glib-2.0])
 
 AC_ARG_WITH([eventdpluginsdir], AS_HELP_STRING([--with-eventdpluginsdir=DIR], [Directory for eventd plugins]), [], [with_eventdpluginsdir=yes])
 case "${with_eventdpluginsdir}" in
@@ -71,9 +71,10 @@ if test x${enable_ruby} = xyes; then
 fi
 AM_CONDITIONAL([ENABLE_RUBY], [test x${enable_ruby} = xyes])
 
+lua_min_version="5.2"
 AC_ARG_ENABLE([lua], AS_HELP_STRING([--disable-lua], [Disable Lua plugin]), [], [enable_lua=yes])
 if test x${enable_lua} = xyes; then
-    PKG_CHECK_MODULES([LUA], [lua gmodule-2.0])
+    PKG_CHECK_MODULES([LUA], [lua >= ${lua_min_version} gmodule-2.0])
     AC_DEFINE([LUA_NEEDS_GLOBAL_LOADING], [1], [Whether Lua needs loading])
 fi
 AM_CONDITIONAL([ENABLE_LUA], [test x${enable_lua} = xyes])

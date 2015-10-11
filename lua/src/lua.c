@@ -45,6 +45,13 @@ struct _EventdPluginContext {
     lua_State *lua;
     const gchar *current_script;
     GList *scripts;
+    gint current_action;
+    GList *actions;
+};
+
+struct _EventdPluginAction {
+    gint index;
+    GList *script_actions;
 };
 
 static int
@@ -203,36 +210,49 @@ _eventd_bindings_lua_push_object_with_class(EventdPluginContext *self, gpointer 
     return lua_gettop(self->lua);
 }
 
-#define foreach_script(name, argc, code) \
-    lua_getglobal(self->lua, "EventdPlugin"); \
-    lua_getfield(self->lua, -1, "scripts"); \
-    lua_remove(self->lua, -2); \
-    GList *script_; \
-    for ( script_ = self->scripts ; script_ != NULL ; script_ = g_list_next(script_) ) \
-    { \
-        lua_getfield(self->lua, -1, script_->data); \
-        lua_getfield(self->lua, -1, name); \
-        if ( ! lua_isfunction(self->lua, -1) ) \
+#define foreach_script_with_return(scripts, name, argc, retc, code, default_return_code, return_code) G_STMT_START { \
+        lua_getglobal(self->lua, "EventdPlugin"); \
+        lua_getfield(self->lua, -1, "scripts"); \
+        lua_remove(self->lua, -2); \
+        GList *script_; \
+        gchar *script; \
+        for ( script_ = scripts ; script_ != NULL ; script_ = g_list_next(script_) ) \
         { \
-            lua_pop(self->lua, 2); \
-            continue; \
+            script = script_->data; \
+            lua_getfield(self->lua, -1, script); \
+            lua_getfield(self->lua, -1, name); \
+            if ( ! lua_isfunction(self->lua, -1) ) \
+            { \
+                lua_pop(self->lua, 2); \
+                default_return_code \
+                goto next; \
+            } \
+            lua_insert(self->lua, lua_gettop(self->lua) - 1); \
+            code \
+            lua_call(self->lua, argc, retc); \
+        next: \
+            return_code \
         } \
-        lua_insert(self->lua, lua_gettop(self->lua) - 1); \
-        code \
-        lua_call(self->lua, argc, 0); \
-    } \
-    lua_pop(self->lua, 1);
+        lua_pop(self->lua, 1); \
+    } G_STMT_END
+
+#define foreach_script(scripts, name, argc) foreach_script_with_return(scripts, name, argc, 0, {}, {}, {})
+#define foreach_script_with_code(scripts, name, argc, code) foreach_script_with_return(scripts, name, argc, 0, code, {}, {})
+
+#define foreach_scripts(name, argc) foreach_script_with_return(self->scripts, name, argc, 0, {}, {}, {})
+#define foreach_scripts_with_code(name, argc, code) foreach_script_with_return(self->scripts, name, argc, 0, code, {}, {})
+#define foreach_scripts_with_return(name, argc, retc, code, default_return_code, return_code) foreach_script_with_return(self->scripts, name, argc, retc, code, default_return_code, return_code)
 
 static void
 _eventd_bindings_lua_start(EventdPluginContext *self)
 {
-    foreach_script("start", 1, {});
+    foreach_scripts("start", 1);
 }
 
 static void
 _eventd_bindings_lua_stop(EventdPluginContext *self)
 {
-    foreach_script("stop", 1, {});
+    foreach_scripts("stop", 1);
 }
 
 static EventdPluginCommandStatus
@@ -246,43 +266,108 @@ _eventd_bindings_lua_global_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
     gint key_file_;
     key_file_ = _eventd_bindings_lua_push_object_with_class(self, key_file, "GLib", "KeyFile");
-    foreach_script("global_parse", 2,
+    foreach_scripts_with_code("global_parse", 2,
         lua_pushvalue(self->lua, key_file_);
     );
     lua_pop(self->lua, 1);
 }
 
-static void
-_eventd_bindings_lua_event_parse(EventdPluginContext *self, const gchar *config_id, GKeyFile *key_file)
+static EventdPluginAction *
+_eventd_bindings_lua_action_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
+    GList *script_actions = NULL;
+    lua_newtable(self->lua);
+
     gint key_file_;
     key_file_ = _eventd_bindings_lua_push_object_with_class(self, key_file, "GLib", "KeyFile");
-    foreach_script("event_parse", 3,
-        lua_pushstring(self->lua, config_id);
+    foreach_scripts_with_return("action_parse", 2, 1,
         lua_pushvalue(self->lua, key_file_);
+    ,
+        lua_pushnil(self->lua);
+    ,
+        if ( ! lua_isnil(self->lua, -1) )
+        {
+            lua_setfield(self->lua, 1, script);
+            script_actions = g_list_prepend(script_actions, script);
+        }
+        else
+            lua_pop(self->lua, 1);
     );
     lua_pop(self->lua, 1);
+
+    if ( script_actions == NULL )
+    {
+        lua_pop(self->lua, 1);
+        return NULL;
+    }
+
+    EventdPluginAction *action;
+    action = g_slice_new0(EventdPluginAction);
+    action->index = ++self->current_action;
+    action->script_actions = script_actions;
+
+    lua_getglobal(self->lua, "EventdPlugin");
+    lua_getfield(self->lua, -1, "actions");
+    if ( lua_isnil(self->lua, -1) )
+    {
+        lua_pop(self->lua, 1);
+        lua_newtable(self->lua);
+        lua_pushvalue(self->lua, -1);
+        lua_setfield(self->lua, 2, "actions");
+    }
+    lua_remove(self->lua, 2);
+
+    lua_pushinteger(self->lua, action->index);
+    lua_pushvalue(self->lua, 1);
+    lua_settable(self->lua, 2);
+    lua_pop(self->lua, 2);
+
+    return action;
+}
+
+static void
+_eventd_bindings_lua_action_free(gpointer data)
+{
+    EventdPluginAction *action = data;
+
+    g_list_free(action->script_actions);
+
+    g_slice_free(EventdPluginAction, action);
+}
+
+static void
+_eventd_bindings_lua_actions_free(gpointer data)
+{
+    g_list_free_full(data, _eventd_bindings_lua_action_free);
 }
 
 static void
 _eventd_bindings_lua_config_reset(EventdPluginContext *self)
 {
-    foreach_script("config_reset", 1, {});
+    g_list_free_full(self->actions, _eventd_bindings_lua_actions_free);
+    self->actions = NULL;
+    foreach_scripts("config_reset", 1);
 }
 
 static void
-_eventd_bindings_lua_event_action(EventdPluginContext *self, const gchar *config_id, EventdEvent *event)
+_eventd_bindings_lua_event_action(EventdPluginContext *self, EventdPluginAction *action, EventdEvent *event)
 {
     gint event_;
+    lua_getglobal(self->lua, "EventdPlugin");
+    lua_getfield(self->lua, 1, "actions");
+    lua_remove(self->lua, 1);
+    lua_rawgeti(self->lua, 1, action->index);
+    lua_remove(self->lua, 1);
+
     event_ = _eventd_bindings_lua_push_object_with_class(self, event, "Eventd", "Event");
-    foreach_script("event_action", 3,
-        lua_pushstring(self->lua, config_id);
+    foreach_script_with_code(action->script_actions, "event_action", 3,
+        lua_getfield(self->lua, 1, script);
         lua_pushvalue(self->lua, event_);
     );
-    lua_pop(self->lua, 1);
+    lua_pop(self->lua, 2);
 }
 
-EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "eventd-bindings-lua";
+EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "lua";
 EVENTD_BINDINGS_EXPORT
 void
 eventd_plugin_get_interface(EventdPluginInterface *interface)
@@ -298,7 +383,7 @@ eventd_plugin_get_interface(EventdPluginInterface *interface)
     eventd_plugin_interface_add_control_command_callback(interface, _eventd_bindings_lua_control_command);
 
     eventd_plugin_interface_add_global_parse_callback(interface, _eventd_bindings_lua_global_parse);
-    eventd_plugin_interface_add_event_parse_callback(interface, _eventd_bindings_lua_event_parse);
+    eventd_plugin_interface_add_action_parse_callback(interface, _eventd_bindings_lua_action_parse);
     eventd_plugin_interface_add_config_reset_callback(interface, _eventd_bindings_lua_config_reset);
 
     eventd_plugin_interface_add_event_action_callback(interface, _eventd_bindings_lua_event_action);

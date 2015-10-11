@@ -22,8 +22,12 @@ function EventdBindingsLuaTestScript:global_parse(key_file)
     end
 end
 
-function EventdBindingsLuaTestScript:event_action(config_id, event)
-    print("LUA EVENT ACTION");
+function EventdBindingsLuaTestScript:action_parse(key_file)
+    return 1;
+end
+
+function EventdBindingsLuaTestScript:event_action(action, event)
+    print("LUA EVENT ACTION %d", action);
     print(config_id);
     print(event:get_data("test"));
 end
