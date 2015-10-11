@@ -58,7 +58,7 @@ struct _EventdPluginContext {
             ID control_command;
 
             ID global_parse;
-            ID event_parse;
+            ID action_parse;
             ID config_reset;
 
             ID event_action;
@@ -66,6 +66,15 @@ struct _EventdPluginContext {
     } rb;
     const gchar *current_script;
     GHashTable *scripts;
+};
+
+typedef struct {
+    VALUE script;
+    VALUE action;
+} EventdBindingsRubyScriptAction;
+
+struct _EventdPluginAction {
+    EventdBindingsRubyScriptAction *script_actions;
 };
 
 static inline EventdPluginContext *
@@ -147,7 +156,7 @@ _eventd_bindings_ruby_load_stuff(VALUE dummy)
     set_id(control_command);
 
     set_id(global_parse);
-    set_id(event_parse);
+    set_id(action_parse);
     set_id(config_reset);
 
     set_id(event_action);
@@ -228,25 +237,31 @@ _eventd_bindings_ruby_uninit(EventdPluginContext *self)
     g_free(self);
 }
 
-#define foreach_script \
+#define foreach_script_with_code(met, code, ...) G_STMT_START { \
     GHashTableIter iter; \
     gchar *name; \
     VALUE *script; \
     g_hash_table_iter_init(&iter, self->scripts); \
-    while ( g_hash_table_iter_next(&iter, (gpointer *) &name, (gpointer *) &script) )
+    while ( g_hash_table_iter_next(&iter, (gpointer *) &name, (gpointer *) &script) ) \
+    { \
+        VALUE ret; \
+        ret = rb_funcall(*script, self->rb.id.met, __VA_ARGS__); \
+        code \
+    } \
+    } G_STMT_END
+
+#define foreach_script(met, ...) foreach_script_with_code(met, {(void)ret;}, __VA_ARGS__)
 
 static void
 _eventd_bindings_ruby_start(EventdPluginContext *self)
 {
-    foreach_script
-        rb_funcall(*script, self->rb.id.start, 0);
+    foreach_script(start, 0);
 }
 
 static void
 _eventd_bindings_ruby_stop(EventdPluginContext *self)
 {
-    foreach_script
-        rb_funcall(*script, self->rb.id.stop, 0);
+    foreach_script(stop, 0);
 
 }
 
@@ -303,38 +318,56 @@ _eventd_bindings_ruby_global_parse(EventdPluginContext *self, GKeyFile *key_file
 {
     VALUE key_file_ = _eventd_bindings_ruby_get_object(KeyFile, key_file);
 
-    foreach_script
-        rb_funcall(*script, self->rb.id.global_parse, 1, key_file_);
+    foreach_script(global_parse, 1, key_file_);
 }
 
-static void
-_eventd_bindings_ruby_event_parse(EventdPluginContext *self, const gchar *config_id, GKeyFile *key_file)
+static EventdPluginAction *
+_eventd_bindings_ruby_action_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
-    VALUE config_id_ = rb_str_new_cstr(config_id);
     VALUE key_file_ = _eventd_bindings_ruby_get_object(KeyFile, key_file);
 
-    foreach_script
-        rb_funcall(*script, self->rb.id.event_parse, 2, config_id_, key_file_);
+    EventdBindingsRubyScriptAction *script_actions;
+    gsize i = 0;
+    script_actions = g_new(EventdBindingsRubyScriptAction, g_hash_table_size(self->scripts) + 1);
+    foreach_script_with_code(action_parse, {
+        if ( ! NIL_P(ret) )
+        {
+            script_actions[i].script = *script;
+            script_actions[i].action = ret;
+            ++i;
+        }
+    }, 1, key_file_);
+    if ( i < 1 )
+    {
+        g_free(script_actions);
+        return NULL;
+    }
+    script_actions[i].script = Qnil;
+
+    EventdPluginAction *action;
+    action = g_slice_new(EventdPluginAction);
+    action->script_actions = g_renew(EventdBindingsRubyScriptAction, script_actions, i + 1);
+
+    return action;
 }
 
 static void
 _eventd_bindings_ruby_config_reset(EventdPluginContext *self)
 {
-    foreach_script
-        rb_funcall(*script, self->rb.id.config_reset, 0);
+    foreach_script(config_reset, 0);
 }
 
 static void
-_eventd_bindings_ruby_event_action(EventdPluginContext *self, const gchar *config_id, EventdEvent *event)
+_eventd_bindings_ruby_event_action(EventdPluginContext *self, EventdPluginAction *action, EventdEvent *event)
 {
-    VALUE config_id_ = rb_str_new_cstr(config_id);
+    EventdBindingsRubyScriptAction *action_;
     VALUE event_ = _eventd_bindings_ruby_get_object(Event, event);
 
-    foreach_script
-        rb_funcall(*script, self->rb.id.event_action, 2, config_id_, event_);
+    for ( action_ = action->script_actions ; ! NIL_P(action_->script) ; ++action_ )
+        rb_funcall(action_->script, self->rb.id.event_action, 2, action_->action, event_); \
 }
 
-EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "eventd-bindings-ruby";
+EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "ruby";
 EVENTD_BINDINGS_EXPORT
 void
 eventd_plugin_get_interface(EventdPluginInterface *interface)
@@ -348,7 +381,7 @@ eventd_plugin_get_interface(EventdPluginInterface *interface)
     eventd_plugin_interface_add_control_command_callback(interface, _eventd_bindings_ruby_control_command);
 
     eventd_plugin_interface_add_global_parse_callback(interface, _eventd_bindings_ruby_global_parse);
-    eventd_plugin_interface_add_event_parse_callback(interface, _eventd_bindings_ruby_event_parse);
+    eventd_plugin_interface_add_action_parse_callback(interface, _eventd_bindings_ruby_action_parse);
     eventd_plugin_interface_add_config_reset_callback(interface, _eventd_bindings_ruby_config_reset);
 
     eventd_plugin_interface_add_event_action_callback(interface, _eventd_bindings_ruby_event_action);

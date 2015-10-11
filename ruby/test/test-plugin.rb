@@ -19,17 +19,18 @@ class EventdBindingsRubyTestScript
         puts "RUBY GLOBAL PARSE"
     end
 
-    def event_parse(config_id, key_file)
+    def action_parse(key_file)
         puts "RUBY EVENT PARSE"
+        return 1
     end
 
     def config_reset()
         puts "RUBY CONFIG RESET"
     end
 
-    def event_action(config_id, event)
+    def event_action(action, event)
         puts "RUBY EVENT"
-        puts config_id
+        puts action.inspect
         puts event.inspect
     end
 end
