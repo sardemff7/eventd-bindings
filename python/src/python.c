@@ -165,9 +165,9 @@ _eventd_bindings_python_uninit(EventdPluginContext *self)
     Py_XDECREF(self->py.mEventd);
     Py_XDECREF(self->py.mGLib);
 
-    Py_Finalize();
-
     g_hash_table_unref(self->scripts);
+
+    Py_Finalize();
 
     g_free(self);
 }
