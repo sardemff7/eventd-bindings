@@ -49,6 +49,16 @@ struct _EventdPluginContext {
     } py;
     const gchar *current_script;
     GHashTable *scripts;
+    GList *actions;
+};
+
+typedef struct {
+    PyObject *script;
+    PyObject *action;
+} EventdBindingsPythonScriptAction;
+
+struct _EventdPluginAction {
+    GList *actions;
 };
 
 static PyObject *
@@ -178,25 +188,31 @@ _eventd_bindings_python_get_option_group(EventdPluginContext *self)
     return NULL;
 }
 
-#define foreach_script \
-    GHashTableIter iter; \
-    gchar *name; \
-    PyObject *script; \
-    g_hash_table_iter_init(&iter, self->scripts); \
-    while ( g_hash_table_iter_next(&iter, (gpointer *) &name, (gpointer *) &script) )
+#define foreach_script_with_code(code, met, ...) G_STMT_START { \
+        GHashTableIter iter; \
+        gchar *name; \
+        PyObject *script; \
+        g_hash_table_iter_init(&iter, self->scripts); \
+        while ( g_hash_table_iter_next(&iter, (gpointer *) &name, (gpointer *) &script) ) \
+        { \
+            PyObject *ret; \
+            ret = PyObject_CallMethod(script, #met, __VA_ARGS__); \
+            g_debug("Call %s returned %p", #met, ret); \
+            code \
+        } \
+    } G_STMT_END
 
+#define foreach_script(met, ...) foreach_script_with_code(Py_XDECREF(ret);, met, __VA_ARGS__)
 static void
 _eventd_bindings_python_start(EventdPluginContext *self)
 {
-    foreach_script
-        PyObject_CallMethod(script, "start", NULL);
+    foreach_script(start, NULL);
 }
 
 static void
 _eventd_bindings_python_stop(EventdPluginContext *self)
 {
-    foreach_script
-        PyObject_CallMethod(script, "stop", NULL);
+    foreach_script(stop, NULL);
 }
 
 static EventdPluginCommandStatus
@@ -209,34 +225,84 @@ static void
 _eventd_bindings_python_global_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
     PyObject *key_file_ = pyg_pointer_new(g_key_file_get_type(), key_file);
-    foreach_script
-        PyObject_CallMethod(script, "global_parse", "O", key_file_);
+    foreach_script(global_parse, "O", key_file_);
 }
 
 static void
-_eventd_bindings_python_event_parse(EventdPluginContext *self, const gchar *config_id, GKeyFile *key_file)
+_eventd_bindings_python_action_free(gpointer data)
+{
+    EventdBindingsPythonScriptAction *script_action = data;
+
+    Py_XDECREF(script_action->action);
+
+    g_slice_free(EventdBindingsPythonScriptAction, script_action);
+}
+
+static void
+_eventd_bindings_python_actions_free(gpointer data)
+{
+    EventdPluginAction *action = data;
+
+    g_list_free_full(action->actions, _eventd_bindings_python_action_free);
+
+    g_slice_free(EventdPluginAction, action);
+}
+
+static EventdPluginAction *
+_eventd_bindings_python_action_parse(EventdPluginContext *self, GKeyFile *key_file)
 {
     PyObject *key_file_ = pyg_pointer_new(g_key_file_get_type(), key_file);
-    foreach_script
-        PyObject_CallMethod(script, "event_parse", "sO", config_id, key_file_);
+    GList *actions = NULL;
+    foreach_script_with_code({
+        g_debug("%p", ret);
+        if ( ret == NULL )
+            continue;
+
+        EventdBindingsPythonScriptAction *script_action;
+        script_action = g_slice_new(EventdBindingsPythonScriptAction);
+
+        script_action->script = script;
+        script_action->action = ret;
+
+        actions = g_list_prepend(actions, script_action);
+    }, action_parse, "O", key_file_);
+
+    if ( actions == NULL )
+        return NULL;
+
+    EventdPluginAction *action;
+    action = g_slice_new(EventdPluginAction);
+    action->actions = actions;
+
+    self->actions = g_list_prepend(self->actions, action);
+
+    return action;
 }
 
 static void
 _eventd_bindings_python_config_reset(EventdPluginContext *self)
 {
-    foreach_script
-        PyObject_CallMethod(script, "config_reset", NULL);
+    g_list_free_full(self->actions, _eventd_bindings_python_actions_free);
+    self->actions = NULL;
+    foreach_script(config_reset, NULL);
 }
 
 static void
-_eventd_bindings_python_event_action(EventdPluginContext *self, const gchar *config_id, EventdEvent *event)
+_eventd_bindings_python_event_action(EventdPluginContext *self, EventdPluginAction *action, EventdEvent *event)
 {
     PyObject *event_ = pygobject_new(G_OBJECT(event));
-    foreach_script
-        PyObject_CallMethod(script, "event_action", "sO", config_id, event_);
+    GList *script_action_;
+    for ( script_action_ = action->actions ; script_action_ != NULL ; script_action_ = g_list_next(script_action_) )
+    {
+        EventdBindingsPythonScriptAction *script_action = script_action_->data;
+        PyObject *ret;
+        ret = PyObject_CallMethod(script_action->script, "event_action", "OO", script_action->action, event_);
+        Py_XDECREF(ret);
+    }
+    Py_XDECREF(event_);
 }
 
-EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "eventd-bindings-python";
+EVENTD_BINDINGS_EXPORT const gchar *eventd_plugin_id = "python";
 EVENTD_BINDINGS_EXPORT
 void
 eventd_plugin_get_interface(EventdPluginInterface *interface)
@@ -252,7 +318,7 @@ eventd_plugin_get_interface(EventdPluginInterface *interface)
     eventd_plugin_interface_add_control_command_callback(interface, _eventd_bindings_python_control_command);
 
     eventd_plugin_interface_add_global_parse_callback(interface, _eventd_bindings_python_global_parse);
-    eventd_plugin_interface_add_event_parse_callback(interface, _eventd_bindings_python_event_parse);
+    eventd_plugin_interface_add_action_parse_callback(interface, _eventd_bindings_python_action_parse);
     eventd_plugin_interface_add_config_reset_callback(interface, _eventd_bindings_python_config_reset);
 
     eventd_plugin_interface_add_event_action_callback(interface, _eventd_bindings_python_event_action);
