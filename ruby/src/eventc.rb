@@ -12,13 +12,7 @@ $wait = false
 category = nil
 name = nil
 
-last_data = nil
 data = {}
-
-def data_name_contents_error()
-    $stderr.puts "Not the same number of data names and data contents"
-    exit(1)
-end
 
 while ( arg = ARGV.shift )
     case ( arg )
@@ -36,8 +30,6 @@ while ( arg = ARGV.shift )
         end
     end
 end
-
-data_name_contents_error unless ( last_data.nil? )
 
 $eventc = Eventc::Connection.new(host)
 $eventc.set_passive(!$wait)
