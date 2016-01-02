@@ -124,7 +124,7 @@ _eventd_bindings_lua_lgi_require(EventdPluginContext *self, const gchar *name, g
 
 static void _eventd_bindings_lua_uninit(EventdPluginContext *self);
 static EventdPluginContext *
-_eventd_bindings_lua_init(EventdPluginCoreContext *core, EventdPluginCoreInterface *interface)
+_eventd_bindings_lua_init(EventdPluginCoreContext *core)
 {
 #ifdef LUA_NEEDS_GLOBAL_LOADING
     /* Some ugly workaround for lua modules that do not link to it */

@@ -101,7 +101,7 @@ _eventd_bindings_python_free_context(PyObject *context)
 
 static void _eventd_bindings_python_uninit(EventdPluginContext *self);
 static EventdPluginContext *
-_eventd_bindings_python_init(EventdPluginCoreContext *core, EventdPluginCoreInterface *interface)
+_eventd_bindings_python_init(EventdPluginCoreContext *core)
 {
 #ifdef PYTHON_NEEDS_GLOBAL_LOADING
     /* Some ugly workaround for python modules that do not link to it */

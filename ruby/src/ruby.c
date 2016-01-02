@@ -182,7 +182,7 @@ _eventd_bindings_ruby_free_script(gpointer data)
 
 static void _eventd_bindings_ruby_uninit(EventdPluginContext *self);
 static EventdPluginContext *
-_eventd_bindings_ruby_init(EventdPluginCoreContext *core, EventdPluginCoreInterface *interface)
+_eventd_bindings_ruby_init(EventdPluginCoreContext *core)
 {
     int state = ruby_setup();
     if ( state != 0 )
