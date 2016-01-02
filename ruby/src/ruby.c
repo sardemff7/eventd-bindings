@@ -202,7 +202,7 @@ _eventd_bindings_ruby_init(EventdPluginCoreContext *core)
     {
         VALUE exception = rb_errinfo(); /* get last exception */
         VALUE s = rb_funcall(exception, rb_intern("to_s"), 0);
-        g_warning("Couldn't load sstuff: %.*s", (int)RSTRING_LEN(s), StringValuePtr(s));
+        g_warning("Couldn't load stuff: %.*s", (int)RSTRING_LEN(s), StringValuePtr(s));
         rb_set_errinfo(Qnil);
         _eventd_bindings_ruby_uninit(self);
         return NULL;
