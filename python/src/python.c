@@ -182,12 +182,6 @@ _eventd_bindings_python_uninit(EventdPluginContext *self)
     g_free(self);
 }
 
-static GOptionGroup *
-_eventd_bindings_python_get_option_group(EventdPluginContext *self)
-{
-    return NULL;
-}
-
 #define foreach_script_with_code(code, met, ...) G_STMT_START { \
         GHashTableIter iter; \
         gchar *name; \
@@ -309,8 +303,6 @@ eventd_plugin_get_interface(EventdPluginInterface *interface)
 {
     eventd_plugin_interface_add_init_callback(interface, _eventd_bindings_python_init);
     eventd_plugin_interface_add_uninit_callback(interface, _eventd_bindings_python_uninit);
-
-    eventd_plugin_interface_add_get_option_group_callback(interface, _eventd_bindings_python_get_option_group);
 
     eventd_plugin_interface_add_start_callback(interface, _eventd_bindings_python_start);
     eventd_plugin_interface_add_stop_callback(interface, _eventd_bindings_python_stop);

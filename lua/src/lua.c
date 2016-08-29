@@ -190,12 +190,6 @@ _eventd_bindings_lua_uninit(EventdPluginContext *self)
     g_free(self);
 }
 
-static GOptionGroup *
-_eventd_bindings_lua_get_option_group(EventdPluginContext *self)
-{
-    return NULL;
-}
-
 static gint
 _eventd_bindings_lua_push_object_with_class(EventdPluginContext *self, gpointer object, const gchar *module, const gchar *klass)
 {
@@ -374,8 +368,6 @@ eventd_plugin_get_interface(EventdPluginInterface *interface)
 {
     eventd_plugin_interface_add_init_callback(interface, _eventd_bindings_lua_init);
     eventd_plugin_interface_add_uninit_callback(interface, _eventd_bindings_lua_uninit);
-
-    eventd_plugin_interface_add_get_option_group_callback(interface, _eventd_bindings_lua_get_option_group);
 
     eventd_plugin_interface_add_start_callback(interface, _eventd_bindings_lua_start);
     eventd_plugin_interface_add_stop_callback(interface, _eventd_bindings_lua_stop);
