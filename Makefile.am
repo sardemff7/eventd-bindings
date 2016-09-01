@@ -2,6 +2,10 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 
+AM_DISTCHECK_CONFIGURE_FLAGS = \
+	--with-eventdpluginsdir="$$dc_install_base/$(eventdpluginsdir)" \
+	$(null)
+
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 AM_MAKEFLAGS = --no-print-directory
 
